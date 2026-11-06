@@ -1,0 +1,66 @@
+# Validate the scanned-PDF (OCR) path on Windows: install tesseract via
+# Chocolatey, add Simplified Chinese language data, and run test_ocr.py
+# against the scanned fixture. Closes the "Windows 上装 tesseract 步骤未测"
+# gap item from dev.to part 6 (the honest-gaps list).
+#
+# Scope (honest): this validates the documented install steps + OCR quality
+# on windows-latest only. It does NOT bundle tesseract into either exe, and
+# the installer still does not ship tesseract. OCR quality here uses the
+# tessdata_fast chi_sim model (CI validation only); a real user install
+# fetches the same file from tesseract-ocr/tessdata_fast.
+name: ocr-windows
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "converter/**"
+      - ".github/workflows/ocr-windows.yml"
+  workflow_dispatch:
+
+jobs:
+  ocr-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: converter
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tesseract via Chocolatey
+        run: |
+          choco install tesseract -y --no-progress
+          $tessDir = 'C:\Program Files\Tesseract-OCR'
+          if (-not (Test-Path "$tessDir\tesseract.exe")) { throw "tesseract.exe not found under $tessDir after choco install" }
+          Add-Content $env:GITHUB_PATH $tessDir
+          Write-Host "tesseract installed at $tessDir"
+
+      - name: Add Simplified Chinese language data
+        run: |
+          $tessDir = 'C:\Program Files\Tesseract-OCR'
+          $dest = "$tessDir\tessdata\chi_sim.traineddata"
+          if (-not (Test-Path $dest)) {
+            Invoke-WebRequest -Uri 'https://github.com/tesseract-ocr/tessdata_fast/raw/main/chi_sim.traineddata' -OutFile $dest
+          }
+          $langs = & "$tessDir\tesseract.exe" --list-langs
+          Write-Host ($langs -join "`n")
+          if ($langs -notcontains 'chi_sim') { throw "chi_sim not listed by tesseract --list-langs" }
+          Write-Host "chi_sim language data present"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Generate fixtures
+        run: |
+          python fixtures/generate_fixtures.py
+          python fixtures/make_scanned_fixture.py
+
+      - name: Run OCR validation (expect 6/6 rows)
+        run: python test_ocr.py
