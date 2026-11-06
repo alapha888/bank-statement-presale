@@ -4,8 +4,7 @@
 本地运行，不联网；文件只在本地处理。
 
 > 本目录是预售产品的**核心转换逻辑单元**（命令行 + 图形界面 + 可导入模块）。
-> Windows exe 已由 GitHub Actions 打包验证（见“Windows 打包”）；安装程序、
-> 自动更新仍待做。
+> Windows exe 与安装程序已由 GitHub Actions 打包验证（见“Windows 打包”）；自动更新仍待做。
 
 ## 用法
 
@@ -39,7 +38,7 @@ convert("对账单.pdf", "输出.csv")
 被计入，仅作核对提示）。
 
 诚实范围：图形界面只包数字 PDF 路径（pdfplumber），**不支持扫描件 /
-图片型 PDF，未含 OCR**；无安装程序、无自动更新；转换只在本地进行，
+图片型 PDF，未含 OCR**；安装程序已在 CI 打包验证（见“Windows 打包”），无自动更新；转换只在本地进行，
 不联网、不上传。界面用 tkinter（Python 标准库），不新增任何依赖。
 
 ## CSV 格式
@@ -139,13 +138,22 @@ OCR 结论：**干净的 300 dpi 合成扫描页可以走通**。这不等于“
   流程为数字 fixture 全量验证（pytest）→ 两个 exe 各自烟囱测试 → 上传 artifact。
   每次改动 converter/** 或工作流本身都会重跑。
 - **范围**：两个 exe 都只含数字 PDF 路径（pdfplumber）；OCR 路径需另装 tesseract，
-  不在 exe 内；无安装程序、无自动更新。
+  不在 exe 内；安装程序见下；无自动更新。
+- **安装程序（2026-11-06，CI 已验证，run 42246793629，3m20s 全绿）**：
+  `installer/bank-statement-converter.iss`（Inno Setup 6）把两个 exe 打成一个
+  安装包 `bank-statement-converter-setup-1.0.0.exe`（89,732,967 字节，约 85.6 MB），
+  上传为 artifact `bank-statement-converter-installer-windows`（未过期，未发布
+  Release）。安装时装两个 exe 到同一目录、开始菜单两个快捷方式、桌面快捷方式
+  （默认勾选、可取消）、附 converter/README.md 作说明。首跑曾因 [Tasks] 段写了
+  非法 `Flags: checked` 编译失败，已去掉该 flag 后重跑全绿（见
+  installer/BUILD-NOTES.md）。范围诚实：安装程序不捆 tesseract、不含 OCR；
+  真实 Windows 机器上的安装与双击点检尚未做。
 - **GUI exe 的 console 选择**：有意用 `--console` 而不用 `--windowed`，因为
   `gui.py` 的无显示提示（“无法打开图形界面…”）是打印到 stdout 的，
   `--windowed` 会把它吞掉、CI 也就无法断言它。代价是双击 GUI exe 时会同时
   出现一个黑色控制台窗口；等有真实 Windows 点检与错误落盘方案后再考虑
   `--windowed`。GUI 烟囱测试的期望见构建记录。
-- **仍待做**：安装程序、自动更新均不在本单元内。
+- **仍待做**：自动更新不在本单元内。
 
 ## Fixture 说明
 
