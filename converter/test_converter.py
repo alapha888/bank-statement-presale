@@ -96,5 +96,20 @@ def test_fixtures():
         assert not r["errors"], f"{name}: {r['errors']}"
 
 
+def test_parse_date_rejects_impossible_dates():
+    """Real-sample finding (2026-11-07): the line parser matches any NN/NN
+    fragment, so a sort-code-like fragment or a DD/MM date used to pass
+    through as an impossible month/day (e.g. 2023-60-83, 2023-31-10).
+    parse_date must reject those instead of returning garbage."""
+    assert parse_date("60-83-71", 2023) is None
+    assert parse_date("31/10", 2023) is None  # DD/MM, not MM/DD
+    assert parse_date("2023-13-40", None) is None
+    assert parse_date("2023-02-30", None) is None
+    # Valid dates are unchanged.
+    assert parse_date("2023-10-03", None) == "2023-10-03"
+    assert parse_date("03/10", 2023) == "2023-03-10"
+    assert parse_date("2023/10/03", None) == "2023-10-03"
+
+
 if __name__ == "__main__":
     sys.exit(main())

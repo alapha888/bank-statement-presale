@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import datetime
 import re
 import sys
 import unicodedata
@@ -132,6 +133,21 @@ def parse_amount(text: str) -> str:
     return f"{value:.2f}"
 
 
+def _valid_date(y: int, m: int, d: int) -> str | None:
+    """Return YYYY-MM-DD only if the numbers form a real calendar date.
+
+    The line parser matches any NN/NN fragment, so without this check a
+    sort-code-like fragment (e.g. 60-83-71) or a DD/MM date (31/10) would
+    pass through as an impossible month/day. Rejecting them here keeps
+    such lines out of the output instead of writing garbage dates.
+    """
+    try:
+        datetime.date(y, m, d)
+    except ValueError:
+        return None
+    return f"{y:04d}-{m:02d}-{d:02d}"
+
+
 def parse_date(text: str, statement_year: int | None) -> str | None:
     """Parse a date cell to YYYY-MM-DD, or None if not a date."""
     if text is None:
@@ -139,11 +155,12 @@ def parse_date(text: str, statement_year: int | None) -> str | None:
     s = _norm(text)
     m = _DATE_FULL.search(s)
     if m:
-        return f"{int(m.group('y')):04d}-{int(m.group('m')):02d}-{int(m.group('d')):02d}"
+        return _valid_date(int(m.group("y")), int(m.group("m")),
+                           int(m.group("d")))
     m = _DATE_MD.search(s)
     if m and statement_year:
-        return (f"{statement_year:04d}-{int(m.group('m')):02d}-"
-                f"{int(m.group('d')):02d}")
+        return _valid_date(statement_year, int(m.group("m")),
+                           int(m.group("d")))
     return None
 
 
