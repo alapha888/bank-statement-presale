@@ -30,6 +30,14 @@ FIXTURES = HERE / "fixtures"
 
 
 def main() -> int:
+    # The OCR output contains Chinese text. On Windows the console stdout
+    # defaults to cp1252, which cannot encode it (observed in CI:
+    # UnicodeEncodeError printing the raw OCR text). Force UTF-8 output;
+    # on Linux/macOS this is already the default and changes nothing.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
     tess = shutil.which("tesseract")
     if tess is None:
         print("tesseract binary NOT FOUND on this machine.")
