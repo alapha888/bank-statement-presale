@@ -109,6 +109,9 @@ OCR 另有一条独立脚本（需要系统安装 tesseract，见下）：
 | tesseract | 本机原本未安装；本次通过 apt 安装 5.3.4，含 chi_sim + eng 语言数据 |
 | ocrmypdf | 本机未安装，未使用 |
 | fixture-s1-scanned.pdf（fixture D 渲染成的 300 dpi 纯图片 PDF，无文本层） | tesseract `chi_sim+eng --psm 6` 识别后经行解析：**6/6 行全字段正确（100%）** |
+| Windows 安装步骤 | 2026-11-07，CI（run 42299707395，1m24s 全绿）：`choco install tesseract` 装上 5.5.3.20260724，从 tessdata_fast 下载 chi_sim.traineddata，`tesseract --list-langs` 确认 chi_sim 在列；同一扫描 fixture 上 **6/6 行全字段正确（100%）** |
+
+Windows 侧附带发现：`test_ocr.py` 有两处 Windows 编码问题——读 tesseract 输出未指定编码（Windows 下按 cp1252 解码 UTF-8 中文会崩，stdout 变 None）、打印中文时控制台 stdout 也是 cp1252（`UnicodeEncodeError`）；已分别修为 `utf-8-sig` 解码与 stdout 强制 UTF-8。Linux 上跑通的脚本在 Windows 上会崩，这正是这条 CI 作业存在的意义。
 
 OCR 结论：**干净的 300 dpi 合成扫描页可以走通**。这不等于“常规扫描对账单”
 已验证——真实扫描件常有倾斜、噪点、低分辨率、印章遮挡，本次没有这类样本。
