@@ -126,11 +126,24 @@ OCR 结论：**干净的 300 dpi 合成扫描页可以走通**。这不等于“
 ## Windows 打包
 
 - **已验证（2026-11-06，CI 首跑全绿，1m30s）**：`.github/workflows/build-windows.yml`
-  在 windows-latest 上用 PyInstaller `--onefile` 打出 `bank-statement-converter.exe`；
-  流程为数字 fixture 全量验证（pytest）→ exe 对 fixture A 烟囱测试（12 行准确）
-  → 上传为 Actions artifact `bank-statement-converter-windows`（约 41 MB，未发布 Release）。
+  在 windows-latest 上用 PyInstaller `--onefile` 打出两个 exe：
+  - `bank-statement-converter.exe`（命令行，`--console`）——对 fixture A
+    烟囱测试（12 行准确，CSV 表头 + 12 行 = 13 行），上传为 Actions artifact
+    `bank-statement-converter-windows`（约 41 MB，未发布 Release）。
+  - `bank-statement-converter-gui.exe`（图形界面，入口 `gui.py`，`--console`）——
+    已接线进同一工作流（构建 + 烟囱测试 + 上传为 artifact
+    `bank-statement-converter-gui-windows`），待下一次 CI 首跑验证；
+    本地 Linux 构建已验证能打出单文件（约 51.5 MB）且无显示时优雅退出，
+    Windows 实际大小以 CI artifact 为准，未发布 Release。
+  流程为数字 fixture 全量验证（pytest）→ 两个 exe 各自烟囱测试 → 上传 artifact。
   每次改动 converter/** 或工作流本身都会重跑。
-- **范围**：exe 只含数字 PDF 路径（pdfplumber）；OCR 路径需另装 tesseract，不在 exe 内。
+- **范围**：两个 exe 都只含数字 PDF 路径（pdfplumber）；OCR 路径需另装 tesseract，
+  不在 exe 内；无安装程序、无自动更新。
+- **GUI exe 的 console 选择**：有意用 `--console` 而不用 `--windowed`，因为
+  `gui.py` 的无显示提示（“无法打开图形界面…”）是打印到 stdout 的，
+  `--windowed` 会把它吞掉、CI 也就无法断言它。代价是双击 GUI exe 时会同时
+  出现一个黑色控制台窗口；等有真实 Windows 点检与错误落盘方案后再考虑
+  `--windowed`。GUI 烟囱测试的期望见构建记录。
 - **仍待做**：安装程序、自动更新均不在本单元内。
 
 ## Fixture 说明
@@ -153,6 +166,7 @@ OCR 结论：**干净的 300 dpi 合成扫描页可以走通**。这不等于“
 - `gui.py` — 图形界面（tkinter 标准库；后端 `run_conversion` 可无显示器测试）
 - `test_gui.py` — GUI 后端测试（不需要显示器）
 - `GUI-构建记录-20261106.md` — 本次 GUI 构建记录
+- `构建记录-GUI打包.md` — GUI 打进 Windows exe 的构建记录（console 选择、烟囱测试设计）
 - `requirements.txt` / `requirements-dev.txt` — 依赖 pin
 - `run_tests.sh` — 一条命令跑全量数字测试
 - `test_converter.py` — 数字 fixture 验证

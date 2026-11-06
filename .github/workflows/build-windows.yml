@@ -1,13 +1,17 @@
-# Build a Windows .exe of the bank-statement converter (PyInstaller, onefile).
+# Build Windows .exes of the bank-statement converter (PyInstaller, onefile):
+# a CLI exe and a GUI exe. See converter/构建记录-GUI打包.md for the
+# console-vs-windowed decision and the GUI smoke-test design.
 #
 # Why CI instead of a local Windows machine: there is no Windows machine in
 # this environment. GitHub Actions windows-latest is free for public repos,
 # so the packaging path is validated on every converter change.
 #
-# Scope (honest): the exe covers the DIGITAL-PDF path only (pdfplumber).
+# Scope (honest): both exes cover the DIGITAL-PDF path only (pdfplumber).
 # The OCR/scanned-PDF path needs a separate tesseract install and is NOT
-# inside the exe. No installer, no GUI, no auto-update -- those are out of
-# scope for presale v1; the exe is a console tool.
+# inside either exe. No installer, no auto-update -- those are out of scope
+# for presale v1. Both exes are console builds: the GUI exe keeps --console
+# so gui.py's no-display message stays visible in CI logs instead of being
+# swallowed by a windowed build.
 name: build-windows
 
 on:
@@ -46,6 +50,17 @@ jobs:
       - name: Build Windows exe
         run: pyinstaller --onefile --name bank-statement-converter --console bank_statement.py
 
+      - name: Build Windows GUI exe
+        # --console (not --windowed) on purpose: gui.py prints its graceful
+        # no-display message ("无法打开图形界面…") to stdout, and a
+        # --windowed build redirects stdout to nowhere, so the message --
+        # and the smoke test that asserts it -- would be unobservable.
+        # Cost, accepted for presale v1: double-clicking the GUI exe also
+        # opens a console window next to the GUI window. Revisit --windowed
+        # only with a log-file fallback for errors + a real-Windows
+        # click-through check (see converter/构建记录-GUI打包.md).
+        run: pyinstaller --onefile --name bank-statement-converter-gui --console gui.py
+
       - name: Smoke-test the exe on fixture A
         # Fixture A ground truth: 12 transaction rows -> CSV = header + 12 lines.
         run: |
@@ -54,8 +69,47 @@ jobs:
           if ($lines -ne 13) { throw "smoke test: expected 13 CSV lines, got $lines" }
           Write-Host "smoke test OK: 12 rows extracted by the exe"
 
+      - name: Smoke-test the GUI exe (headless runner)
+        # Windows tkinter uses Win32, not $DISPLAY: there is no Linux-style
+        # "no display name" failure on native Windows, and windows-latest
+        # provides a desktop session, so Tk() is EXPECTED to succeed and
+        # mainloop() to block -- the Linux headless outcome (quick exit 1)
+        # is the fallback branch here, not the expected one.
+        # Exactly two outcomes pass, each strictly asserted -- this is NOT
+        # "any exit code passes":
+        #  (a) quick exit: exit code must be exactly 1, stdout must contain
+        #      "无法打开图形界面", no "Traceback" in stdout/stderr; or
+        #  (b) still running after 15 s: the window opened and mainloop is
+        #      alive, no "Traceback" in captured output; the process is
+        #      then killed. Any other exit code, exit 1 without the
+        #      message, or any Traceback fails the step.
+        run: |
+          $outFile = "gui-smoke-out.txt"
+          $errFile = "gui-smoke-err.txt"
+          $proc = Start-Process -FilePath ".\dist\bank-statement-converter-gui.exe" -RedirectStandardOutput $outFile -RedirectStandardError $errFile -PassThru -NoNewWindow
+          $exited = $proc.WaitForExit(15000)
+          $out = ""
+          $err = ""
+          if (Test-Path $outFile) { $out = Get-Content $outFile -Raw }
+          if (Test-Path $errFile) { $err = Get-Content $errFile -Raw }
+          if (($out -match "Traceback") -or ($err -match "Traceback")) { throw "GUI smoke test: Traceback in GUI exe output" }
+          if ($exited) {
+            if ($proc.ExitCode -ne 1) { throw "GUI smoke test: expected exit code 1 (graceful no-display), got $($proc.ExitCode)" }
+            if ($out -notmatch "无法打开图形界面") { throw "GUI smoke test: graceful no-display message missing from stdout" }
+            Write-Host "GUI smoke OK: graceful no-display exit (code 1, message present, no Traceback)"
+          } else {
+            if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
+            Write-Host "GUI smoke OK: window opened (still running after 15 s), no Traceback; killed it"
+          }
+
       - uses: actions/upload-artifact@v4
         with:
           name: bank-statement-converter-windows
           path: converter/dist/bank-statement-converter.exe
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bank-statement-converter-gui-windows
+          path: converter/dist/bank-statement-converter-gui.exe
           if-no-files-found: error
