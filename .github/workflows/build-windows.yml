@@ -8,8 +8,10 @@
 #
 # Scope (honest): both exes cover the DIGITAL-PDF path only (pdfplumber).
 # The OCR/scanned-PDF path needs a separate tesseract install and is NOT
-# inside either exe. No installer, no auto-update -- those are out of scope
-# for presale v1. Both exes are console builds: the GUI exe keeps --console
+# inside either exe. No auto-update -- that is out of scope for presale v1.
+# The installer (build-installer job below, installer/*.iss) packages the
+# two exes only; it does NOT bundle tesseract and does NOT claim OCR support.
+# Both exes are console builds: the GUI exe keeps --console
 # so gui.py's no-display message stays visible in CI logs instead of being
 # swallowed by a windowed build.
 name: build-windows
@@ -19,6 +21,7 @@ on:
     branches: [main]
     paths:
       - "converter/**"
+      - "installer/**"
       - ".github/workflows/build-windows.yml"
   workflow_dispatch:
 
@@ -112,4 +115,47 @@ jobs:
         with:
           name: bank-statement-converter-gui-windows
           path: converter/dist/bank-statement-converter-gui.exe
+          if-no-files-found: error
+
+  build-installer:
+    # Packages the two exes above into one Inno Setup installer.
+    # NOTE: the task brief said `needs: build-windows`, but the existing
+    # job id is `build-exe` (the workflow is named build-windows); the
+    # dependency below uses the real job id.
+    needs: build-exe
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download CLI exe artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bank-statement-converter-windows
+          path: installer/cli
+
+      - name: Download GUI exe artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bank-statement-converter-gui-windows
+          path: installer/gui
+
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Compile installer
+        # ISCC path is Inno Setup 6's default choco install location.
+        # The .iss expects the exes at installer\cli\ and installer\gui\
+        # (placed there by the two download steps above) and the README at
+        # converter\README.md (checked out). Output lands next to the .iss.
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\bank-statement-converter.iss
+          Get-ChildItem installer\bank-statement-converter-setup-*.exe | Select-Object Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bank-statement-converter-installer-windows
+          path: installer/bank-statement-converter-setup-*.exe
           if-no-files-found: error
