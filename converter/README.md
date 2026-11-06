@@ -3,8 +3,9 @@
 把带文本层的银行对账单 PDF 转成可导入 QuickBooks / Excel 的 CSV。
 本地运行，不联网；文件只在本地处理。
 
-> 本目录是预售产品的**核心转换逻辑单元**（命令行 + 可导入模块），
-> 不是打包好的 Windows 桌面安装程序。打包/安装程序仍待做（见“未验证”）。
+> 本目录是预售产品的**核心转换逻辑单元**（命令行 + 可导入模块）。
+> Windows exe 已由 GitHub Actions 打包验证（见“Windows 打包”）；安装程序、
+> 图形界面、自动更新仍待做。
 
 ## 用法
 
@@ -104,9 +105,17 @@ OCR 结论：**干净的 300 dpi 合成扫描页可以走通**。这不等于“
   转换器按表头关键词（日期/摘要/支出/收入/余额/金额/借方/贷方等）认列，
   遇到未见过的表头措辞会跳过该表——宁可漏提，不瞎提。
 - **重度破损扫描件**：超出预售 v1 范围；本次只验证了干净渲染页。
-- **Windows 桌面打包**：安装程序、图形界面、自动更新均不在本单元内，
-  仍待做。
 - **非数字 PDF 的其余形态**：加密 PDF、图片型 PDF 中混有文本层等未测。
+
+## Windows 打包
+
+- **已验证（2026-11-06，CI 首跑全绿，1m30s）**：`.github/workflows/build-windows.yml`
+  在 windows-latest 上用 PyInstaller `--onefile` 打出 `bank-statement-converter.exe`；
+  流程为数字 fixture 全量验证（pytest）→ exe 对 fixture A 烟囱测试（12 行准确）
+  → 上传为 Actions artifact `bank-statement-converter-windows`（约 41 MB，未发布 Release）。
+  每次改动 converter/** 或工作流本身都会重跑。
+- **范围**：exe 只含数字 PDF 路径（pdfplumber）；OCR 路径需另装 tesseract，不在 exe 内。
+- **仍待做**：安装程序、图形界面、自动更新均不在本单元内。
 
 ## Fixture 说明
 
