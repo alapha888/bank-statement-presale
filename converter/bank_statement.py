@@ -17,7 +17,10 @@ Supported layouts (v1):
 
 NOT supported in this unit: image-only (scanned) PDFs -- they have no text
 layer for pdfplumber to read. See README.md "OCR 状态" for the status of
-the scanned-PDF path. No network calls are made at runtime.
+the scanned-PDF path. Password-protected (encrypted) PDFs are also not
+supported: the CLI refuses them with a plain-language error (exit 2) instead
+of a traceback, and the GUI reports them as unreadable. No network calls
+are made at runtime.
 """
 
 from __future__ import annotations
@@ -31,6 +34,32 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pdfplumber
+
+
+class PasswordProtectedError(ValueError):
+    """Raised when the input PDF is password-protected (encrypted).
+
+    pdfplumber surfaces this as a PdfminerException with an empty message
+    wrapping pdfminer's PDFPasswordIncorrect, which is useless to a user,
+    so extract_transactions() translates it into this error with a
+    human-readable message.
+    """
+
+
+def _is_password_error(exc: BaseException) -> bool:
+    """Walk the exception chain looking for pdfminer's PDFPasswordIncorrect.
+
+    Checked by class name (not import) so the converter keeps pdfplumber as
+    its only declared runtime dependency; pdfminer.six ships with it.
+    """
+    seen: set[int] = set()
+    cur: BaseException | None = exc
+    while cur is not None and id(cur) not in seen:
+        seen.add(id(cur))
+        if type(cur).__name__ == "PDFPasswordIncorrect":
+            return True
+        cur = cur.__context__ or cur.__cause__
+    return False
 
 CSV_COLUMNS = ["日期", "摘要", "支出", "收入", "余额", "原始行"]
 
@@ -257,10 +286,23 @@ def infer_statement_year(pages_text: list[str]) -> int | None:
 def extract_transactions(pdf_path: str | Path,
                          statement_year: int | None = None
                          ) -> list[Transaction]:
-    """Extract all transactions from a text-layer bank-statement PDF."""
+    """Extract all transactions from a text-layer bank-statement PDF.
+
+    Raises PasswordProtectedError for password-protected (encrypted) PDFs.
+    """
     txns: list[Transaction] = []
     pages_text: list[str] = []
-    with pdfplumber.open(str(pdf_path)) as pdf:
+    try:
+        pdf = pdfplumber.open(str(pdf_path))
+    except Exception as exc:
+        if _is_password_error(exc):
+            raise PasswordProtectedError(
+                "this PDF is password-protected (encrypted). "
+                "Decrypt it first (e.g. open it in a PDF reader and save "
+                "an unprotected copy), then convert."
+            ) from exc
+        raise
+    with pdf:
         pages = list(pdf.pages)
         for page in pages:
             pages_text.append(page.extract_text() or "")
@@ -303,7 +345,11 @@ def main(argv: list[str] | None = None) -> int:
                          "from the document when omitted)")
     args = ap.parse_args(argv)
     out = args.csv or str(Path(args.pdf).with_suffix(".csv"))
-    txns = convert(args.pdf, out, args.year)
+    try:
+        txns = convert(args.pdf, out, args.year)
+    except PasswordProtectedError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
     print(f"extracted {len(txns)} transactions -> {out}")
     return 0
 

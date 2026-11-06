@@ -48,7 +48,8 @@ jobs:
       - name: Run digital-fixture validation
         run: |
           python fixtures/generate_fixtures.py
-          python -m pytest test_converter.py -v
+          python fixtures/generate_edge_fixtures.py
+          python -m pytest test_converter.py test_edge_cases.py -v
 
       - name: Build Windows exe
         run: pyinstaller --onefile --name bank-statement-converter --console bank_statement.py

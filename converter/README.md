@@ -102,6 +102,14 @@ OCR 另有一条独立脚本（需要系统安装 tesseract，见下）：
 | fixture-d-text-lines.pdf | 无表格纯文本行（行解析兜底） | 6 | 6 | 100% |
 | **合计** | | **34** | **34** | **100%** |
 
+边界形态 / Edge cases（2026-11-07，`test_edge_cases.py`，合成样张）：
+
+| 检查 | 结果 |
+|---|---|
+| E1 加密 PDF（fixture A 内容，AES-256，用户口令 test123） | 转换器拒绝：`PasswordProtectedError`，CLI 退出码 2、人话报错、无 CSV 写出、无 traceback。修掉的 bug：此前 pdfplumber 只抛一个空消息的 `PdfminerException`，CLI 直接打 traceback。 |
+| E2 图文混排（fixture A 内容＋页内嵌一张“业务专用章”光栅图） | 文本层不受影响：**12/12 行全字段正确（100%）**，与 fixture A 逐字段一致 |
+| E3 无表格线（同 12 行、同列位置，但一张表格线都没有） | 已知限制，已锁定为特征测试：12/12 行找到、12/12 日期正确，但**只有 2 行（两笔收入）全字段正确**；10 笔支出因金额无正负号、行解析又拿不到列信息，借方/贷方判反。修法是行解析兜底改用 `extract_words` 的 x 坐标认列，超出预售 v1 范围，留待后续 |
+
 扫描件 / OCR：
 
 | 检查 | 结果 |
@@ -123,7 +131,7 @@ OCR 结论：**干净的 300 dpi 合成扫描页可以走通**。这不等于“
   转换器按表头关键词（日期/摘要/支出/收入/余额/金额/借方/贷方等）认列，
   遇到未见过的表头措辞会跳过该表——宁可漏提，不瞎提。
 - **重度破损扫描件**：超出预售 v1 范围；本次只验证了干净渲染页。
-- **非数字 PDF 的其余形态**：加密 PDF、图片型 PDF 中混有文本层等未测。
+- **非数字 PDF 的其余形态**：加密 PDF 与图文混排已测（见上表 E1/E2）；无表格线的数字 PDF 已测但有已知限制（E3，借方/贷方判反）。仍未测：真实银行样本上的同类形态。
 
 ## Windows 打包
 
@@ -169,6 +177,9 @@ OCR 结论：**干净的 300 dpi 合成扫描页可以走通**。这不等于“
   （转换器本身的 NFKC 归一化也能兜住后一类问题，见上。）
 - `fixtures/make_scanned_fixture.py`：把 fixture D 渲染成 300 dpi 纯图片 PDF/PNG。
 - `test_converter.py`：数字 fixture 验证（也是 pytest 入口）。
+- `test_edge_cases.py`：边界形态验证（E1 加密 / E2 图文混排 / E3 无表格线；
+  E3 为已知限制的特征测试）；fixture 由 `fixtures/generate_edge_fixtures.py`
+  生成，ground truth 在 `fixtures/ground_truth_edge.json`。
 - `test_ocr.py`：扫描 fixture 的 OCR 端到端验证；缺 tesseract 时退出码为 2
   并打印安装指引，不谎报通过。
 
@@ -182,5 +193,6 @@ OCR 结论：**干净的 300 dpi 合成扫描页可以走通**。这不等于“
 - `requirements.txt` / `requirements-dev.txt` — 依赖 pin
 - `run_tests.sh` — 一条命令跑全量数字测试
 - `test_converter.py` — 数字 fixture 验证
+- `test_edge_cases.py` — 边界形态验证（E1/E2/E3）
 - `test_ocr.py` — OCR 端到端验证
-- `fixtures/` — 4 个数字 PDF + 1 个扫描 PDF/PNG + ground truth + 两个生成脚本
+- `fixtures/` — 4 个数字 PDF + 3 个边界形态 PDF + 1 个扫描 PDF/PNG + ground truth + 三个生成脚本

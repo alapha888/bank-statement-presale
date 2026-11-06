@@ -63,10 +63,8 @@ def compare(pdf_name: str) -> dict:
 
 def main() -> int:
     results = []
-    for pdf in sorted((FIXTURES).glob("fixture-*.pdf")):
-        if "scanned" in pdf.name:
-            continue  # OCR fixture: see test_ocr.py, not the digital suite
-        r = compare(pdf.name)
+    for name in _pdf_names():
+        r = compare(name)
         results.append(r)
         status = "PASS" if r["accuracy"] == 1.0 and not r["errors"] else "FAIL"
         print(f"[{status}] {r['file']}: {r['correct']}/{r['total']} rows "
@@ -81,11 +79,14 @@ def main() -> int:
 
 # ---- pytest entry points -------------------------------------------------
 def _pdf_names():
-    # Digital (text-layer) fixtures only; the scanned fixture is covered
-    # separately by test_ocr.py and has no ground-truth entry of its own
-    # (its truth is fixture D's, under "fixture-d-text-lines.pdf").
-    return sorted(p.name for p in FIXTURES.glob("fixture-*.pdf")
-                  if "scanned" not in p.name)
+    # Exactly the fixtures with ground truth in ground_truth.json (A-D).
+    # The scanned fixture is covered separately by test_ocr.py and has no
+    # ground-truth entry of its own (its truth is fixture D's, under
+    # "fixture-d-text-lines.pdf"); the E* edge fixtures are covered by
+    # test_edge_cases.py against ground_truth_edge.json.
+    truth = json.loads((FIXTURES / "ground_truth.json").read_text(
+        encoding="utf-8"))
+    return sorted(truth)
 
 
 def test_fixtures():
