@@ -131,10 +131,11 @@ OCR 结论：**干净的 300 dpi 合成扫描页可以走通**。这不等于“
     烟囱测试（12 行准确，CSV 表头 + 12 行 = 13 行），上传为 Actions artifact
     `bank-statement-converter-windows`（约 41 MB，未发布 Release）。
   - `bank-statement-converter-gui.exe`（图形界面，入口 `gui.py`，`--console`）——
-    已接线进同一工作流（构建 + 烟囱测试 + 上传为 artifact
-    `bank-statement-converter-gui-windows`），待下一次 CI 首跑验证；
-    本地 Linux 构建已验证能打出单文件（约 51.5 MB）且无显示时优雅退出，
-    Windows 实际大小以 CI artifact 为准，未发布 Release。
+    已接线进同一工作流，CI 首跑已验证（2026-11-06，run 42228311551，2m58s 全绿）：
+    GUI 烟囱测试走分支 (b)，窗口在 runner 上打开、15 秒仍运行、无 Traceback 后杀掉；
+    上传为 artifact `bank-statement-converter-gui-windows`（46,185,219 字节，约 44.0 MB，
+    未过期，未发布 Release）。本地 Linux 构建亦验证能打出单文件（约 51.5 MB）且无显示时
+    优雅退出（exit 1、有提示、无 Traceback）。
   流程为数字 fixture 全量验证（pytest）→ 两个 exe 各自烟囱测试 → 上传 artifact。
   每次改动 converter/** 或工作流本身都会重跑。
 - **范围**：两个 exe 都只含数字 PDF 路径（pdfplumber）；OCR 路径需另装 tesseract，

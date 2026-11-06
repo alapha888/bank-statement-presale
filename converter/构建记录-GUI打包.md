@@ -102,3 +102,11 @@
   上无问题。
 - **安装程序、自动更新**：仍在 README“仍待做”里，不属于本单元。
 - **真实银行 PDF 样本**：与转换器本体一致，仍未验证，只在合成 fixture 上验证。
+
+## CI 首跑结果（2026-11-06 21:49 CST 补记，parent 核验）
+
+- run 42228311551（commit 9a3e827），build-exe 2m58s，全绿：两个构建步骤、两个烟囱测试、两个 artifact 上传全部通过。唯一 annotation 为 Node.js 20 弃用提示（已知，不影响结果）。
+- GUI 烟囱测试走分支 (b)：日志原文 "GUI smoke OK: window opened (still running after 15 s), no Traceback; killed it"——窗口在 runner 上打开、15 秒仍运行、无 Traceback 后杀掉。分支 (a) 未触发，符合 windows-latest 有桌面会话的预期。
+- artifact 均在位、未过期：`bank-statement-converter-windows` 43,154,989 字节（约 41.2 MB）；`bank-statement-converter-gui-windows` 46,185,219 字节（约 44.0 MB）。
+- converter/README.md“Windows 打包”小节与公开预售页（index.html／仓根 README）已同步为 GUI exe 已验证口径，并如实保留“真实机器点检尚未做”。
+- 仍未验证：真实 Windows 机器点检（双击、选 PDF 转换、核对 CSV、控制台伴随窗口是否可接受）、安装程序、自动更新、真实银行 PDF 样本。
