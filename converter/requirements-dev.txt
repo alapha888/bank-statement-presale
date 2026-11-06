@@ -1,0 +1,5 @@
+# Development / fixture-generation dependencies (NOT needed at runtime).
+-r requirements.txt
+PyMuPDF==2.1
+fonttools==4.68.0
+pytest==9.2.0

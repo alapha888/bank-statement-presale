@@ -1,0 +1,6 @@
+# Runtime dependency of the converter (bank_statement.py).
+# pdfplumber is the only runtime dependency: table + text extraction.
+# Chosen over PyMuPDF/pypdf because its table extraction (line-based grid
+# detection) fits bank statements, and it is pure-Python on top of
+# pdfminer.six. PyMuPDF is used only for generating test fixtures.
+pdfplumber==0.11.10
