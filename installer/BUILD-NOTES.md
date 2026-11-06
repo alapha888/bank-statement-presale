@@ -76,3 +76,13 @@ Workflow `build-windows`, job **`build-installer`** (runs after
 **`bank-statement-converter-installer-windows`**
 (`bank-statement-converter-setup-1.0.0.exe`). Do NOT trigger CI from this
 machine — push from the parent session, then watch that job.
+
+## CI 首跑失败与修复（2026-11-06 23:4x CST，run 42246188962）
+- 失败步：build-installer / Compile installer。Inno Setup 6.7.1 报错：
+  `Error on line 52 ...: Parameter "Flags" includes an unknown flag`，
+  随后 Compile aborted。build-exe 作业本身全绿。
+- 原因：[Tasks] 段的 `Flags: checked` 不是合法 flag（Inno Setup 任务默认即
+  选中，checked 不是可写 flag；只有 unchecked 等才是）。
+- 修复：去掉该行 `; Flags: checked`，行为不变（桌面快捷方式默认勾选、
+  可取消勾选）。只改这一行，未动其他内容。
+- 待 CI 重跑验证（push 后看 run）。

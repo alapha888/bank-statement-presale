@@ -49,7 +49,10 @@ UninstallDisplayName={#MyAppName} {#MyAppVersion}
 VersionInfoVersion={#MyAppVersion}.0
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
+; NOTE: no Flags here — tasks are checked by default in Inno Setup, and
+; `Flags: checked` is not a valid [Tasks] flag (CI 2026-11-06: "Parameter
+; "Flags" includes an unknown flag" on this line). Default = checked/opt-out.
 
 [Files]
 ; Both exes come from the CI artifacts (see build-windows.yml):
