@@ -11,4 +11,4 @@ if [ ! -x "$VENV" ]; then
 fi
 "$VENV" fixtures/generate_fixtures.py
 "$VENV" fixtures/make_scanned_fixture.py
-"$VENV" -m pytest test_converter.py -v
+"$VENV" -m pytest test_converter.py test_gui.py -v

@@ -3,9 +3,9 @@
 把带文本层的银行对账单 PDF 转成可导入 QuickBooks / Excel 的 CSV。
 本地运行，不联网；文件只在本地处理。
 
-> 本目录是预售产品的**核心转换逻辑单元**（命令行 + 可导入模块）。
+> 本目录是预售产品的**核心转换逻辑单元**（命令行 + 图形界面 + 可导入模块）。
 > Windows exe 已由 GitHub Actions 打包验证（见“Windows 打包”）；安装程序、
-> 图形界面、自动更新仍待做。
+> 自动更新仍待做。
 
 ## 用法
 
@@ -25,6 +25,22 @@ from bank_statement import extract_transactions, convert
 txns = extract_transactions("对账单.pdf")
 convert("对账单.pdf", "输出.csv")
 ```
+
+## 图形界面
+
+```bash
+.venv/bin/python gui.py
+```
+
+打开窗口后：选对账单 PDF → 确认输出 CSV 位置（默认与 PDF 同目录、同名
+`.csv`）→ 需要时填年份（只影响 `MM-DD` 这类无年份日期，留空自动推断）
+→ 点“开始转换”。完成后窗口显示提取到的交易笔数、输出路径，以及
+“疑似漏提行数”（含日期但未被转成交易的行数，启发式统计——汇总行也可能
+被计入，仅作核对提示）。
+
+诚实范围：图形界面只包数字 PDF 路径（pdfplumber），**不支持扫描件 /
+图片型 PDF，未含 OCR**；无安装程序、无自动更新；转换只在本地进行，
+不联网、不上传。界面用 tkinter（Python 标准库），不新增任何依赖。
 
 ## CSV 格式
 
@@ -115,7 +131,7 @@ OCR 结论：**干净的 300 dpi 合成扫描页可以走通**。这不等于“
   → 上传为 Actions artifact `bank-statement-converter-windows`（约 41 MB，未发布 Release）。
   每次改动 converter/** 或工作流本身都会重跑。
 - **范围**：exe 只含数字 PDF 路径（pdfplumber）；OCR 路径需另装 tesseract，不在 exe 内。
-- **仍待做**：安装程序、图形界面、自动更新均不在本单元内。
+- **仍待做**：安装程序、自动更新均不在本单元内。
 
 ## Fixture 说明
 
@@ -134,6 +150,9 @@ OCR 结论：**干净的 300 dpi 合成扫描页可以走通**。这不等于“
 ## 文件清单
 
 - `bank_statement.py` — 转换器（CLI + 模块）
+- `gui.py` — 图形界面（tkinter 标准库；后端 `run_conversion` 可无显示器测试）
+- `test_gui.py` — GUI 后端测试（不需要显示器）
+- `GUI-构建记录-20261106.md` — 本次 GUI 构建记录
 - `requirements.txt` / `requirements-dev.txt` — 依赖 pin
 - `run_tests.sh` — 一条命令跑全量数字测试
 - `test_converter.py` — 数字 fixture 验证
