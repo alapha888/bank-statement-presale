@@ -43,9 +43,15 @@ def main() -> int:
         print("scanned fixture missing; run:")
         print("  .venv/bin/python fixtures/make_scanned_fixture.py")
         return 2
+    # NOTE: encoding must be explicit. On Windows, text=True alone decodes
+    # with the locale encoding (cp1252), which cannot decode tesseract's
+    # UTF-8 Chinese output and leaves proc.stdout as None (observed in CI:
+    # UnicodeDecodeError byte 0x90 -> AttributeError on splitlines).
+    # utf-8-sig also strips a leading BOM if tesseract ever emits one.
     proc = subprocess.run(
         [tess, str(png), "stdout", "-l", "chi_sim+eng", "--psm", "6"],
-        capture_output=True, text=True)
+        capture_output=True, text=True, encoding="utf-8-sig",
+        errors="replace")
     ocr_text = proc.stdout
     print("--- OCR raw text ---")
     print(ocr_text)
