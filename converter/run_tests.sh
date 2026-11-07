@@ -12,4 +12,4 @@ fi
 "$VENV" fixtures/generate_fixtures.py
 "$VENV" fixtures/generate_edge_fixtures.py
 "$VENV" fixtures/make_scanned_fixture.py
-"$VENV" -m pytest test_converter.py test_gui.py test_edge_cases.py -v
+"$VENV" -m pytest test_converter.py test_gui.py test_edge_cases.py test_update_check.py -v

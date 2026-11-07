@@ -20,7 +20,9 @@ layer for pdfplumber to read. See README.md "OCR 状态" for the status of
 the scanned-PDF path. Password-protected (encrypted) PDFs are also not
 supported: the CLI refuses them with a plain-language error (exit 2) instead
 of a traceback, and the GUI reports them as unreadable. No network calls
-are made at runtime.
+are made at runtime, except an explicit --check-update request, which does
+one GET to the GitHub API and never downloads or installs anything
+(see update_check.py).
 """
 
 from __future__ import annotations
@@ -35,6 +37,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pdfplumber
+
+import update_check
+
+__version__ = "0.1.0"
 
 
 class PasswordProtectedError(ValueError):
@@ -355,12 +361,27 @@ def convert(pdf_path: str | Path, csv_path: str | Path,
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         description="Convert a text-layer bank-statement PDF to CSV.")
-    ap.add_argument("pdf", help="input bank-statement PDF")
+    ap.add_argument("pdf", nargs="?",
+                    help="input bank-statement PDF")
     ap.add_argument("csv", nargs="?", help="output CSV (default: <pdf>.csv)")
     ap.add_argument("--year", type=int, default=None,
                     help="statement year for MM-DD dates (auto-detected "
                          "from the document when omitted)")
+    ap.add_argument("--check-update", action="store_true",
+                    help="check the latest GitHub release against this "
+                         "version and print one line; never downloads or "
+                         "installs anything. Without a PDF argument, only "
+                         "the check runs.")
+    ap.add_argument("--version", action="version",
+                    version=f"%(prog)s {__version__}")
     args = ap.parse_args(argv)
+    if args.check_update:
+        result = update_check.check_for_update(__version__)
+        print(update_check.format_result(result))
+    if args.pdf is None:
+        if args.check_update:
+            return 0
+        ap.error("the following arguments are required: pdf")
     out = args.csv or str(Path(args.pdf).with_suffix(".csv"))
     try:
         txns = convert(args.pdf, out, args.year)

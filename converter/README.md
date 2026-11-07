@@ -4,7 +4,7 @@
 本地运行，不联网；文件只在本地处理。
 
 > 本目录是预售产品的**核心转换逻辑单元**（命令行 + 图形界面 + 可导入模块）。
-> Windows exe 与安装程序已由 GitHub Actions 打包验证（见“Windows 打包”）；自动更新仍待做。
+> Windows exe 与安装程序已由 GitHub Actions 打包验证（见“Windows 打包”）；新版本提示已做（`--check-update`，见“更新检查”），自动下载／安装仍待做。
 
 ## 用法
 
@@ -25,6 +25,15 @@ txns = extract_transactions("对账单.pdf")
 convert("对账单.pdf", "输出.csv")
 ```
 
+## 更新检查
+
+```bash
+.venv/bin/python bank_statement.py --check-update
+# no release published yet (you have 0.1.0) — nothing to compare against
+```
+
+只在显式要求时联网一次（GET GitHub 最新 Release），与本地版本比较后打印一行提示；**不下载、不安装**，失败（无网络、无 Release、响应异常）时如实报状态、退出码仍为 0。转换本身默认不联网。仓库目前尚未发布任何 Release，查询会如实返回“尚无发布”；第一个 Release 打出标签后该检查才有可比对象。图形界面入口待加，目前仅命令行。
+
 ## 图形界面
 
 ```bash
@@ -38,8 +47,8 @@ convert("对账单.pdf", "输出.csv")
 被计入，仅作核对提示）。
 
 诚实范围：图形界面只包数字 PDF 路径（pdfplumber），**不支持扫描件 /
-图片型 PDF，未含 OCR**；安装程序已在 CI 打包验证（见“Windows 打包”），无自动更新；转换只在本地进行，
-不联网、不上传。界面用 tkinter（Python 标准库），不新增任何依赖。
+图片型 PDF，未含 OCR**；安装程序已在 CI 打包验证（见“Windows 打包”），新版本提示见“更新检查”；转换只在本地进行，
+不联网、不上传（`--check-update` 除外，见上）。界面用 tkinter（Python 标准库），不新增任何依赖。
 
 ## CSV 格式
 
@@ -159,7 +168,7 @@ OCR 结论：**干净的 300 dpi 合成扫描页可以走通**。这不等于“
   流程为数字 fixture 全量验证（pytest）→ 两个 exe 各自烟囱测试 → 上传 artifact。
   每次改动 converter/** 或工作流本身都会重跑。
 - **范围**：两个 exe 都只含数字 PDF 路径（pdfplumber）；OCR 路径需另装 tesseract，
-  不在 exe 内；安装程序见下；无自动更新。
+  不在 exe 内；安装程序见下；新版本提示见“更新检查”。
 - **安装程序（2026-11-06，CI 已验证，run 42246793629，3m20s 全绿）**：
   `installer/bank-statement-converter.iss`（Inno Setup 6）把两个 exe 打成一个
   安装包 `bank-statement-converter-setup-1.0.0.exe`（89,732,967 字节，约 85.6 MB），
@@ -174,7 +183,7 @@ OCR 结论：**干净的 300 dpi 合成扫描页可以走通**。这不等于“
   `--windowed` 会把它吞掉、CI 也就无法断言它。代价是双击 GUI exe 时会同时
   出现一个黑色控制台窗口；等有真实 Windows 点检与错误落盘方案后再考虑
   `--windowed`。GUI 烟囱测试的期望见构建记录。
-- **仍待做**：自动更新不在本单元内。
+- **仍待做**：自动下载／安装不在本单元内；新版本提示已做（见“更新检查”）。
 
 ## Fixture 说明
 
