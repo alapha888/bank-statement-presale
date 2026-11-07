@@ -111,12 +111,16 @@ jobs:
           name: bank-statement-converter-windows
           path: converter/dist/bank-statement-converter.exe
           if-no-files-found: error
+          # Only needed by the installer job in the same run; 1 day keeps
+          # retained storage low (each run uploads ~180 MB; free tier is 500 MB).
+          retention-days: 1
 
       - uses: actions/upload-artifact@v4
         with:
           name: bank-statement-converter-gui-windows
           path: converter/dist/bank-statement-converter-gui.exe
           if-no-files-found: error
+          retention-days: 1
 
   build-installer:
     # Packages the two exes above into one Inno Setup installer.
@@ -160,3 +164,6 @@ jobs:
           name: bank-statement-converter-installer-windows
           path: installer/bank-statement-converter-setup-*.exe
           if-no-files-found: error
+          # Deliverable for presale orders; 7 days is enough (rebuildable
+          # from source via workflow re-run). See 2026-11-08 storage cleanup.
+          retention-days: 7
