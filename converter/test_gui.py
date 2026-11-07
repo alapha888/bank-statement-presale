@@ -19,7 +19,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 from bank_statement import CSV_COLUMNS  # noqa: E402
-from gui import default_output_path, run_conversion  # noqa: E402
+from gui import default_output_path, format_update_for_gui, run_conversion  # noqa: E402
 
 FIXTURES = HERE / "fixtures"
 FIXTURE_A = FIXTURES / "fixture-a-two-col-two-page.pdf"
@@ -91,3 +91,40 @@ def test_default_output_path():
     """默认输出：与输入同目录、同名 .csv。"""
     assert default_output_path("/tmp/对账单.pdf") == "/tmp/对账单.csv"
     assert default_output_path(Path("x/y/z.PDF")) == str(Path("x/y/z.csv"))
+
+
+def test_format_update_available():
+    """有新版本：报出新版本号＋下载地址，并明说不自动下载安装。"""
+    text = format_update_for_gui({
+        "status": "update-available", "current": "0.1.0",
+        "latest": "0.2.0",
+        "url": "https://github.com/alapha888/bank-statement-presale/releases/tag/v0.2.0",
+    })
+    assert "0.2.0" in text and "0.1.0" in text
+    assert "不会自动下载" in text or "不自动下载" in text
+    assert "releases/tag/v0.2.0" in text
+
+
+def test_format_update_up_to_date():
+    """已是最新：只报当前版本，不谎报新版本。"""
+    text = format_update_for_gui(
+        {"status": "up-to-date", "current": "0.1.0", "latest": "0.1.0"})
+    assert "已是最新版本" in text and "0.1.0" in text
+
+
+def test_format_update_no_release():
+    """尚无 Release：照实说无可比对，不谎报已是最新。"""
+    text = format_update_for_gui(
+        {"status": "no-release", "current": "0.1.0"})
+    assert "尚未发布" in text
+    assert "已是最新" not in text
+
+
+def test_format_update_unavailable():
+    """检查失败：报出原因，不谎报已是最新，并说明不影响转换。"""
+    text = format_update_for_gui({
+        "status": "unavailable", "current": "0.1.0",
+        "detail": "network down"})
+    assert "不可用" in text and "network down" in text
+    assert "已是最新" not in text
+    assert "不影响转换" in text

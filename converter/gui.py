@@ -1,7 +1,9 @@
 """银行对账单转换器 — 图形界面（tkinter，标准库 only，无新增依赖）。
 
 仅支持带文本层的数字 PDF（pdfplumber 路径）。
-不支持扫描件 / 图片型 PDF（无 OCR），无安装程序、无自动更新。
+不支持扫描件 / 图片型 PDF（无 OCR）。
+
+安装程序见 installer/；新版本检查为手动点按（不自动、不下载、不安装）。
 
 转换逻辑在 bank_statement.py；本文件的 run_conversion() 是可独立测试
 的后端入口（不需要显示器），界面只负责选文件、显示进度与结果。
@@ -16,7 +18,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from bank_statement import CSV_COLUMNS, convert
+from bank_statement import CSV_COLUMNS, __version__, convert
+from update_check import check_for_update
 
 # 疑似交易行的启发式判断：行内出现日期（YYYY-MM-DD / MM-DD 等）。
 # 用于估算"疑似漏提行数"：含日期的行数 − 已提取行数。
@@ -90,6 +93,29 @@ def run_conversion(pdf_path: str | Path, csv_path: str | Path,
     )
 
 
+def format_update_for_gui(result: dict) -> str:
+    """把 update_check 的结果转成 GUI 里显示的中文说明（纯函数，无界面依赖）。
+
+    只提示、不下载、不安装；检查失败时照实说原因，不谎报"已是最新"。
+    """
+    status = result.get("status")
+    current = result.get("current", __version__)
+    if status == "update-available":
+        line = f"有新版本：{result.get('latest')}（当前版本 {current}）。"
+        if result.get("url"):
+            line += f"\n下载地址：{result['url']}"
+        line += "\n本按钮只做提示，不会自动下载或安装。"
+        return line
+    if status == "up-to-date":
+        return f"已是最新版本：{current}。"
+    if status == "no-release":
+        return (f"尚未发布任何正式版本（当前版本 {current}），"
+                "无可比对的新版本。")
+    return (f"新版本检查暂时不可用：{result.get('detail', '原因未知')}"
+            f"（当前版本 {current}）。\n"
+            "不影响转换功能；联网恢复后可再点一次。")
+
+
 # ---- GUI -----------------------------------------------------------------
 
 class ConverterApp(tk.Tk):
@@ -130,6 +156,10 @@ class ConverterApp(tk.Tk):
                                    command=self._on_run)
         self._run_btn.grid(row=3, column=1, pady=10)
 
+        self._update_btn = ttk.Button(frame, text="检查新版本",
+                                      command=self._on_check_update)
+        self._update_btn.grid(row=3, column=2, pady=10)
+
         ttk.Label(frame, textvariable=self._status_var,
                   wraplength=520, justify="left").grid(
             row=4, column=0, columnspan=3, sticky="w", **pad)
@@ -141,7 +171,8 @@ class ConverterApp(tk.Tk):
         ttk.Label(
             frame,
             text="说明：仅支持带文本层的数字 PDF；扫描件（图片型 PDF）暂不支持，"
-                 "未含 OCR。\n本版本无安装程序、无自动更新；转换只在本地进行，不联网、不上传。",
+                 "未含 OCR。\n新版本检查需手动点按，不自动联网、不自动下载安装；"
+                 "转换只在本地进行，不上传。",
             foreground="gray", wraplength=520, justify="left").grid(
             row=6, column=0, columnspan=3, sticky="w", **pad)
 
@@ -225,6 +256,25 @@ class ConverterApp(tk.Tk):
         lines.append("请打开 CSV 核对金额与日期后再使用。")
         self._status_var.set(f"完成：{result.rows} 笔交易已写入 CSV。")
         self._set_result_text("\n".join(lines))
+
+    # -- 新版本检查 ---------------------------------------------------------
+    def _on_check_update(self) -> None:
+        """手动检查新版本：只提示，不下载、不安装；失败只报状态。"""
+        self._update_btn.config(state="disabled")
+        self._status_var.set("正在检查新版本…")
+        self._set_result_text("")
+        self.update_idletasks()
+        threading.Thread(target=self._check_update_in_background,
+                         daemon=True).start()
+
+    def _check_update_in_background(self) -> None:
+        result = check_for_update(__version__)
+        self.after(0, lambda: self._show_update_result(result))
+
+    def _show_update_result(self, result: dict) -> None:
+        self._update_btn.config(state="normal")
+        self._status_var.set("新版本检查完成。")
+        self._set_result_text(format_update_for_gui(result))
 
 
 def main() -> int:
